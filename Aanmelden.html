@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>ReciPin – Aanmelden</title>
+  <title>SeMoRecepts – Aanmelden</title>
   <link rel="stylesheet" href="./style.css"/>
 </head>
 <body>
@@ -13,7 +13,7 @@
       <button id="tab-register" class="tab" type="button">Registreren</button>
     </div>
 
-// Inloggen
+    <!-- Inloggen -->
     <form id="loginForm">
       <label for="loginEmail">E-mail</label>
       <input id="loginEmail" class="input" type="email" placeholder="jij@example.com" required/>
@@ -41,7 +41,7 @@
   </div>
 
 <script>
-// ---- Fake auth met localStorage ----
+// Fake auth met localStorage 
 const USERS_KEY = "rp_users";
 function loadUsers(){ try{return JSON.parse(localStorage.getItem(USERS_KEY))||{};}catch(e){return {};} }
 function saveUsers(u){ localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
