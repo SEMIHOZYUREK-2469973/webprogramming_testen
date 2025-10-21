@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>ReciPin – Mijn recepten</title>
+  <link rel="stylesheet" href="./style.css"/>
+</head>
+<body>
+
+<header class="p-header">
+  <div class="p-bar">
+    <div class="p-brand"><span class="p-dot"></span> ReciPin</div>
+    <div class="p-search">
+      <span class="p-search-icon">🔎</span>
+      <input id="q" type="search" placeholder="Zoek je eigen recepten…" autocomplete="off"/>
+    </div>
+    <div class="p-actions">
+      <span id="hello" class="small"></span>
+      <button class="btn" id="logoutBtn">Uitloggen</button>
+      <button class="btn primary" id="addBtn">Nieuw recept</button>
+    </div>
+  </div>
+
+  <div class="p-chips" id="chips">
+    <button class="p-chip active" type="button">Alle</button>
+    <button class="p-chip" type="button">Ontbijt</button>
+    <button class="p-chip" type="button">Lunch</button>
+    <button class="p-chip" type="button">Diner</button>
+    <button class="p-chip" type="button">Vegan</button>
+    <button class="p-chip" type="button">Dessert</button>
+  </div>
+</header>
+
+<main class="p-masonry" id="grid" aria-live="polite"></main>
+
+<!-- Modal -->
+<div id="backdrop" class="p-backdrop">
+  <div class="p-modal">
+    <h2>Nieuw recept</h2>
+    <div class="p-form-grid">
+      <div><label class="small">Titel</label><input id="title" class="input" required/></div>
+      <div><label class="small">Tijd</label><input id="time" class="input" placeholder="20 min"/></div>
+      <div><label class="small">Porties</label><input id="servings" class="input" type="number" min="1" value="2"/></div>
+      <div><label class="small">Categorie</label><input id="tag" class="input" placeholder="Ontbijt / Lunch"/></div>
+      <div class="p-full"><label class="small">Bron</label><input id="source" class="input" type="url"/></div>
+      <div class="p-full"><label class="small">Afbeelding URL</label><input id="image" class="input" type="url"/></div>
+    </div>
+    <div class="p-modal-footer">
+      <button class="btn" id="cancelBtn">Annuleren</button>
+      <button class="btn primary" id="saveBtn">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// helpers
+function currentUser(){ return localStorage.getItem("rp_current_user"); }
+function ensureAuth(){ const e=currentUser(); if(!e){location.href="Aanmelden.html"; return null;} return e; }
+function key(email){ return "rp_recipes_"+email; }
+function load(email){ try{return JSON.parse(localStorage.getItem(key(email)))||[]}catch(e){return [];} }
+function save(email,arr){ localStorage.setItem(key(email), JSON.stringify(arr)); }
+
+function pinHTML(r,i){
+  const img = r.image && r.image.trim().length ? `<img src="${r.image}" alt="${r.title}" onerror="this.remove()">` : "";
+  return `<article class="p-pin">
+    <a class="p-media" href="${r.source||'#'}" ${r.source?'target="_blank"':''}>
+      ${img}
+      <div class="p-floating">
+        <button class="p-icon-btn">↗</button>
+        <button class="p-icon-btn p-save">Bewaar</button>
+      </div>
+    </a>
+    <div class="p-body">
+      <p class="p-title">${r.title}</p>
+      <p class="p-meta">${r.tag? r.tag + " • " : ""}${r.time||"-"} • ${r.servings||"-"} p</p>
+      <button class="btn small" onclick="removeRecipe(${i})">Verwijderen</button>
+    </div>
+  </article>`;
+}
+
+function render(list){
+  const q = (document.getElementById('q').value||"").toLowerCase();
+  const activeChip = document.querySelector('.p-chip.active')?.textContent || "Alle";
+  const filtered = list.filter(r=>{
+    const matchQ = !q || (r.title||"").toLowerCase().includes(q);
+    const matchC = activeChip==="Alle" || (r.tag||"").toLowerCase()===activeChip.toLowerCase();
+    return matchQ && matchC;
+  });
+  document.getElementById('grid').innerHTML = filtered.length
+    ? filtered.map((r,i)=>pinHTML(r,i)).join("")
+    : "<p class='small' style='padding:.75rem'>Nog geen recepten.</p>";
+}
+
+// main
+const email = ensureAuth();
+let list = email ? load(email) : [];
+if(email){
+  document.getElementById('hello').textContent = email;
+  render(list);
+
+  document.getElementById('q').addEventListener('input', ()=>render(list));
+  document.getElementById('chips').addEventListener('click', e=>{
+    if(e.target.classList.contains('p-chip')){
+      document.querySelectorAll('.p-chip').forEach(c=>c.classList.remove('active'));
+      e.target.classList.add('active'); render(list);
+    }
+  });
+
+  const modal = document.getElementById('backdrop');
+  document.getElementById('addBtn').onclick = ()=> modal.classList.add('show');
+  document.getElementById('cancelBtn').onclick = ()=> modal.classList.remove('show');
+  modal.addEventListener('click', e=>{if(e.target===modal){modal.classList.remove('show');}});
+
+  document.getElementById('saveBtn').onclick = ()=>{
+    const r={title:title.value.trim(),time:time.value,servings:servings.valueAsNumber||2,source:source.value,image:image.value,tag:tag.value};
+    if(!r.title) return title.focus();
+    list.unshift(r); save(email,list); render(list); modal.classList.remove('show');
+    title.value=time.value=source.value=image.value=tag.value=""; servings.value=2;
+  };
+
+  document.getElementById('logoutBtn').onclick = ()=>{localStorage.removeItem("rp_current_user");location.href="Aanmelden.html";}
+}
+
+function removeRecipe(i){ list.splice(i,1); save(email,list); render(list); }
+</script>
+</body>
+</html>

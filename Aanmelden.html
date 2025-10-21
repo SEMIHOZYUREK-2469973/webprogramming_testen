@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>ReciPin – Aanmelden</title>
+  <link rel="stylesheet" href="./style.css"/>
+</head>
+<body>
+  <div class="auth-card">
+    <div class="tabs">
+      <button id="tab-login" class="tab active" type="button">Inloggen</button>
+      <button id="tab-register" class="tab" type="button">Registreren</button>
+    </div>
+
+    <!-- Inloggen -->
+    <form id="loginForm">
+      <label for="loginEmail">E-mail</label>
+      <input id="loginEmail" class="input" type="email" placeholder="jij@example.com" required/>
+      <label for="loginPass">Wachtwoord</label>
+      <input id="loginPass" class="input" type="password" placeholder="••••••••" required/>
+      <div style="height:.5rem"></div>
+      <button class="btn primary block" type="submit">Inloggen</button>
+      <p class="small">Nog geen account? <a href="#" id="toRegister">Registreren</a></p>
+      <p class="small" id="loginMsg"></p>
+    </form>
+
+    <!-- Registreren -->
+    <form id="registerForm" class="hidden">
+      <label for="regName">Naam</label>
+      <input id="regName" class="input" type="text" placeholder="Jouw naam" required/>
+      <label for="regEmail">E-mail</label>
+      <input id="regEmail" class="input" type="email" placeholder="jij@example.com" required/>
+      <label for="regPass">Wachtwoord</label>
+      <input id="regPass" class="input" type="password" placeholder="Kies een wachtwoord" required minlength="4"/>
+      <div style="height:.5rem"></div>
+      <button class="btn primary block" type="submit">Account aanmaken</button>
+      <p class="small">Al een account? <a href="#" id="toLogin">Inloggen</a></p>
+      <p class="small" id="registerMsg"></p>
+    </form>
+  </div>
+
+<script>
+// ---- Fake auth met localStorage ----
+const USERS_KEY = "rp_users";
+function loadUsers(){ try{return JSON.parse(localStorage.getItem(USERS_KEY))||{};}catch(e){return {};} }
+function saveUsers(u){ localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
+function login(email, pass){
+  const users = loadUsers();
+  if(users[email] && users[email].pass === pass){
+    localStorage.setItem("rp_current_user", email);
+    window.location.href = "Homepage.html"; return true;
+  }
+  return false;
+}
+function register(name, email, pass){
+  const users = loadUsers();
+  if(users[email]) return {ok:false,msg:"E-mail bestaat al."};
+  users[email] = {name, pass};
+  saveUsers(users);
+  localStorage.setItem("rp_current_user", email);
+  localStorage.setItem("rp_recipes_"+email, JSON.stringify([]));
+  window.location.href = "Homepage.html"; return {ok:true};
+}
+
+// Tab- en formulierlogica
+const tabLogin = document.getElementById('tab-login');
+const tabRegister = document.getElementById('tab-register');
+const fLogin = document.getElementById('loginForm');
+const fRegister = document.getElementById('registerForm');
+document.getElementById('toRegister').onclick = (e)=>{e.preventDefault();tabRegister.click();};
+document.getElementById('toLogin').onclick = (e)=>{e.preventDefault();tabLogin.click();};
+tabLogin.onclick = ()=>{ tabLogin.classList.add('active'); tabRegister.classList.remove('active'); fLogin.classList.remove('hidden'); fRegister.classList.add('hidden'); };
+tabRegister.onclick = ()=>{ tabRegister.classList.add('active'); tabLogin.classList.remove('active'); fRegister.classList.remove('hidden'); fLogin.classList.add('hidden'); };
+
+fLogin.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const ok = login(loginEmail.value.trim().toLowerCase(), loginPass.value);
+  document.getElementById('loginMsg').textContent = ok ? "" : "Onjuiste gegevens.";
+});
+fRegister.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const result = register(regName.value.trim(), regEmail.value.trim().toLowerCase(), regPass.value);
+  if(!result.ok){ document.getElementById('registerMsg').textContent = result.msg; }
+});
+</script>
+</body>
+</html>
