@@ -43,24 +43,49 @@
 <script>
 // Fake auth met localStorage 
 const USERS_KEY = "rp_users";
-function loadUsers(){ try{return JSON.parse(localStorage.getItem(USERS_KEY))||{};}catch(e){return {};} }
-function saveUsers(u){ localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
-function login(email, pass){
-  const users = loadUsers();
-  if(users[email] && users[email].pass === pass){
-    localStorage.setItem("rp_current_user", email);
-    window.location.href = "Homepage.html"; return true;
+
+function loadUsers() {
+  try {
+    return JSON.parse(localStorage.getItem(USERS_KEY)) || {};
+  } catch (e) {
+    return {};
   }
+}
+
+function saveUsers(users) {
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
+
+function login(email, pass) {
+  const users = loadUsers();
+
+  if (users[email] && users[email].pass === pass) {
+    localStorage.setItem("rp_current_user", email);
+    window.location.href = "Homepage.html";
+    return true;
+  }
+
   return false;
 }
-function register(name, email, pass){
+
+function register(name, email, pass) {
   const users = loadUsers();
-  if(users[email]) return {ok:false,msg:"E-mail bestaat al."};
-  users[email] = {name, pass};
+
+  if (users[email]) {
+    return {
+      ok: false,
+      msg: "E-mail bestaat al."
+    };
+  }
+
+  users[email] = { name, pass };
   saveUsers(users);
+
   localStorage.setItem("rp_current_user", email);
-  localStorage.setItem("rp_recipes_"+email, JSON.stringify([]));
-  window.location.href = "Homepage.html"; return {ok:true};
+  localStorage.setItem("rp_recipes_" + email, JSON.stringify([]));
+  window.location.href = "Homepage.html";
+
+  return { ok: true };
 }
 
 // Tab- en formulierlogica
@@ -68,21 +93,55 @@ const tabLogin = document.getElementById('tab-login');
 const tabRegister = document.getElementById('tab-register');
 const fLogin = document.getElementById('loginForm');
 const fRegister = document.getElementById('registerForm');
-document.getElementById('toRegister').onclick = (e)=>{e.preventDefault();tabRegister.click();};
-document.getElementById('toLogin').onclick = (e)=>{e.preventDefault();tabLogin.click();};
-tabLogin.onclick = ()=>{ tabLogin.classList.add('active'); tabRegister.classList.remove('active'); fLogin.classList.remove('hidden'); fRegister.classList.add('hidden'); };
-tabRegister.onclick = ()=>{ tabRegister.classList.add('active'); tabLogin.classList.remove('active'); fRegister.classList.remove('hidden'); fLogin.classList.add('hidden'); };
 
-fLogin.addEventListener('submit', (e)=>{
+document.getElementById('toRegister').onclick = (e) => {
   e.preventDefault();
-  const ok = login(loginEmail.value.trim().toLowerCase(), loginPass.value);
+  tabRegister.click();
+};
+
+document.getElementById('toLogin').onclick = (e) => {
+  e.preventDefault();
+  tabLogin.click();
+};
+
+tabLogin.onclick = () => {
+  tabLogin.classList.add('active');
+  tabRegister.classList.remove('active');
+  fLogin.classList.remove('hidden');
+  fRegister.classList.add('hidden');
+};
+
+tabRegister.onclick = () => {
+  tabRegister.classList.add('active');
+  tabLogin.classList.remove('active');
+  fRegister.classList.remove('hidden');
+  fLogin.classList.add('hidden');
+};
+
+fLogin.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  const ok = login(
+    loginEmail.value.trim().toLowerCase(),
+    loginPass.value
+  );
+
   document.getElementById('loginMsg').textContent = ok ? "" : "Onjuiste gegevens.";
 });
-fRegister.addEventListener('submit', (e)=>{
+
+fRegister.addEventListener('submit', (e) => {
   e.preventDefault();
-  const result = register(regName.value.trim(), regEmail.value.trim().toLowerCase(), regPass.value);
-  if(!result.ok){ document.getElementById('registerMsg').textContent = result.msg; }
+
+  const result = register(
+    regName.value.trim(),
+    regEmail.value.trim().toLowerCase(),
+    regPass.value
+  );
+
+  if (!result.ok) {
+    document.getElementById('registerMsg').textContent = result.msg;
+  }
 });
 </script>
 </body>
-</html>
+</html> 
