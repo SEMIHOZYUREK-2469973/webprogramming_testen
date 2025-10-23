@@ -58,10 +58,20 @@
         <label class="small">Porties</label>
         <input id="servings" class="input" type="number" min="1" value="2"/>
       </div>
+
+      <!-- Cat kiezer -->
       <div>
-        <label class="small">Categorie</label>
-        <input id="tag" class="input" placeholder="Ontbijt / Lunch"/>
+        <label class="small" for="tag">Categorie</label>
+        <select id="tag" class="input">
+          <option value="">Geen categorie</option>
+          <option>Ontbijt</option>
+          <option>Lunch</option>
+          <option>Diner</option>
+          <option>Vegan</option>
+          <option>Dessert</option>
+        </select>
       </div>
+
       <div class="p-full">
         <label class="small">Bron</label>
         <input id="source" class="input" type="url"/>
@@ -70,6 +80,29 @@
         <label class="small">Afbeelding URL</label>
         <input id="image" class="input" type="url"/>
       </div>
+
+      <div class="p-full">
+        <label class="small" for="ingredients">Ingrediënten</label>
+        <textarea id="ingredients" class="input" rows="6" placeholder="- 2 eieren
+- 200 g bloem
+- 1 el olijfolie"></textarea>
+        <p class="small">Gebruik een <code>-</code> per ingrediënt, elk op een nieuwe regel.</p>
+      </div>
+
+      <div class="p-full">
+        <label class="small" for="steps">Stappen</label>
+        <textarea id="steps" class="input" rows="6" placeholder="1. Oven voorverwarmen op 180°C
+2. Eieren kloppen
+3. Bloem toevoegen"></textarea>
+        <p class="small">Nummer elke stap; één stap per regel.</p>
+      </div>
+
+      <div class="p-full">
+        <label class="small" for="notes">Notities</label>
+        <textarea id="notes" class="input" rows="4" placeholder="Opmerkingen, variaties, serveertips…"></textarea>
+      </div>
+
+
     </div>
     <div class="p-modal-footer">
       <button class="btn" id="cancelBtn">Annuleren</button>
@@ -129,29 +162,55 @@ function save(email, arr) {
 }
 
 function pinHTML(r, i) {
+  // If we have a non-empty image URL, render an <img>. Otherwise, render nothing.
+  // onerror="this.remove()" prevents broken image icons by removing the <img> node if it fails to load.
   const img = (r.image && r.image.trim().length)
     ? `<img src="${r.image}" alt="${r.title}" onerror="this.remove()">`
     : "";
 
+  // Count ingredients/steps safely (older recipes may not have these arrays).
+  const ingCount = Array.isArray(r.ingredients) ? r.ingredients.length : 0;
+  const stepCount = Array.isArray(r.steps) ? r.steps.length : 0;
+
+  // Build an optional "extra" string like "3 ing • 5 stappen".
+  // If either count is zero, we omit that part. If both are zero, extra becomes "".
+  const extra = [ingCount ? `${ingCount} ing` : null, stepCount ? `${stepCount} stappen` : null]
+    .filter(Boolean)
+    .join(" • ");
+
+  // Return the recipe "pin" as HTML. This is what gets inserted into the masonry grid.
   return `
     <article class="p-pin">
-      <a class="p-media" href="${r.source || '#'}" ${r.source ? 'target="_blank"' : ''}>
+      <!-- Clickable media area; opens source in a new tab if provided, this is a comment-->
+      <a class="p-media" href="${r.source || '#'}" ${r.source ? 'target="_blank" rel="noopener noreferrer"' : ''}>
         ${img}
+        <!-- Action buttons (visual only for now) -->
         <div class="p-floating">
-          <button class="p-icon-btn">↗</button>
-          <button class="p-icon-btn p-save">Bewaar</button>
+          <button class="p-icon-btn" title="Open bron">↗</button>
+          <button class="p-icon-btn p-save" title="Bewaar">Bewaar</button>
         </div>
       </a>
+
       <div class="p-body">
+        <!-- Recipe title -->
         <p class="p-title">${r.title}</p>
+
+        <!-- Meta line:
+            - Category if present (adds "Categorie • " prefix)
+            - Time (or "-")
+            - Servings (or "-") followed by " p"
+            - Extra counts (ingredients/steps) only if available. this is a comment-->
         <p class="p-meta">
-          ${r.tag ? r.tag + " • " : ""}${r.time || "-"} • ${r.servings || "-"} p
+          ${r.tag ? r.tag + " • " : ""}${r.time || "-"} • ${r.servings || "-"} p${extra ? " • " + extra : ""}
         </p>
+
+        <!-- Remove button uses the index 'i' to delete the correct recipe -->
         <button class="btn small" onclick="removeRecipe(${i})">Verwijderen</button>
       </div>
     </article>
   `;
 }
+
 
 function render(list) {
   const q = (document.getElementById('q').value || "").toLowerCase();
@@ -216,6 +275,8 @@ if (email) {
     addMenu.classList.add('hidden');
     addBtn.setAttribute('aria-expanded', 'false');
     document.getElementById('backdrop').classList.add('show');
+    document.body.classList.add('no-scroll');
+
   });
 
   // “Scrap een recept” opens the URL modal
@@ -228,6 +289,7 @@ if (email) {
     addMenu.classList.add('hidden');
     addBtn.setAttribute('aria-expanded', 'false');
     scrapBackdrop.classList.add('show');
+    document.body.classList.add('no-scroll');
     setTimeout(() => scrapUrlInput?.focus(), 0);
   });
 
@@ -235,11 +297,13 @@ if (email) {
   scrapBackdrop.addEventListener('click', (e) => {
     if (e.target === scrapBackdrop) {
       scrapBackdrop.classList.remove('show');
+      document.body.classList.remove('no-scroll');
     }
   });
 
   scrapCancelBtn.addEventListener('click', () => {
     scrapBackdrop.classList.remove('show');
+    document.body.classList.remove('no-scroll');
   });
 
   // For later scraping: we enqueue the URL locally so you can process it later.
@@ -264,46 +328,82 @@ if (email) {
     // Reset + close
     scrapUrlInput.value = "";
     scrapBackdrop.classList.remove('show');
+    document.body.classList.remove('no-scroll');
   }
 
 scrapSaveBtn.addEventListener('click', submitScrapUrl);
 
   document.getElementById('cancelBtn').onclick = () => {
     modal.classList.remove('show');
+    document.body.classList.remove('no-scroll'); //unlock page scroll
+
   };
 
   modal.addEventListener('click', e => {
     if (e.target === modal) {
       modal.classList.remove('show');
+      document.body.classList.remove('no-scroll'); //unlock page scroll
     }
   });
 
-  document.getElementById('saveBtn').onclick = () => {
-    const r = {
-      title: title.value.trim(),
-      time: time.value,
-      servings: servings.valueAsNumber || 2,
-      source: source.value,
-      image: image.value,
-      tag: tag.value
-    };
-
-    if (!r.title) {
-      return title.focus();
+  function parseBulletedList(text) {
+    return (text || "")
+      .split('\n')
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+      .map(s => s.replace(/^[-•]\s*/, '')); // strip leading "-" or "•"
     }
 
-    list.unshift(r);
-    save(email, list);
-    render(list);
-    modal.classList.remove('show');
+    function parseNumberedList(text) {
+      return (text || "")
+        .split('\n')
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
+        .map(s => s.replace(/^\d+[\).\s-]?\s*/, '')); // strip leading "1.", "2)", "3 -", etc.
+    }
 
-    title.value = "";
-    time.value = "";
-    source.value = "";
-    image.value = "";
-    tag.value = "";
-    servings.value = 2;
+document.getElementById('saveBtn').onclick = () => {
+  // 0) Collect inputs (incl. new fields)
+  const r = {
+    title: title.value.trim(),
+    time: time.value,
+    servings: servings.valueAsNumber || 2,
+    source: source.value,
+    image: image.value,
+    tag: tag.value, // from <select>, "" means "Geen categorie"
+    ingredients: parseBulletedList(ingredients.value),
+    steps: parseNumberedList(steps.value),
+    notes: (notes.value || "").trim()
   };
+
+  if (!r.title) { 
+    title.focus(); 
+    return; 
+  }
+
+  // 1) Persist + re-render
+  list.unshift(r);
+  save(email, list);
+  render(list);
+
+  // 2) Close the modal (this line probably already existed in your code)
+  modal.classList.remove('show');
+
+  // 3) NEW: unlock page scroll (this is the extra line you add)
+  document.body.classList.remove('no-scroll');
+
+  // 4) Reset fields
+  title.value = "";
+  time.value = "";
+  source.value = "";
+  image.value = "";
+  tag.value = "";          // resets to "Geen categorie" in your <select>
+  servings.value = 2;
+  ingredients.value = "";
+  steps.value = "";
+  notes.value = "";
+};
+
 
   document.getElementById('logoutBtn').onclick = () => {
     localStorage.removeItem("rp_current_user");

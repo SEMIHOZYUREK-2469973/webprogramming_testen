@@ -67,7 +67,7 @@ a:hover{text-decoration:underline}
 .p-meta{color:var(--p-muted);font-size:.95rem}
 
 /* Modal/backdrop */
-.p-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center}
+.p-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:100;padding:1rem;}
 .p-modal{width:min(560px,92vw);background:#fff;border:1px solid var(--p-border);border-radius:16px;padding:1rem}
 .p-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
 .p-full{grid-column:1/-1}
@@ -110,3 +110,34 @@ a:hover{text-decoration:underline}
 .p-dropdown-item:hover {
   background: var(--p-bg);
 }
+
+
+textarea.input {
+  font-family: inherit;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+
+/* Make the modal a flex column and cap its height to the viewport */
+.p-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;          /* cap height so it fits on screen */
+}
+
+/* Let the form grid be the scrollable area */
+.p-form-grid {
+  flex: 1 1 auto;            /* take remaining vertical space */
+  min-height: 0;             /* allow shrinking inside flex parent */
+  overflow: auto;            /* <-- vertical scroll lives here */
+  padding-right: .25rem;     /* tiny space so scrollbar doesn't overlay text */
+}
+
+/* (Optional) slightly better on mobile browsers that support dynamic viewport */
+@supports (height: 1dvh) {
+  .p-modal { max-height: calc(100dvh - 6vh); }
+}
+
+
+body.no-scroll { overflow: hidden; }  /* so page behind stops scrolling when modal opens */
