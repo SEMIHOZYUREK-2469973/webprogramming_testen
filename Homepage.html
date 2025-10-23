@@ -17,7 +17,15 @@
     <div class="p-actions">
       <span id="hello" class="small"></span>
       <button class="btn" id="logoutBtn">Uitloggen</button>
-      <button class="btn primary" id="addBtn">Nieuw recept</button>
+      <!-- Drop down menu for recept -->
+      <div class="p-add-menu">
+          <button class="btn primary" id="addBtn" aria-haspopup="true" aria-expanded="false"> Nieuw recept ▾ </button>
+          <div id="addMenu" class="p-dropdown hidden" role="menu" aria-labelledby="addBtn">
+            <button class="p-dropdown-item" id="btnAddOwn" role="menuitem">Eigen recept</button>
+            <button class="p-dropdown-item" id="btnScrapUrl" role="menuitem">Scrap een recept</button>
+          </div>
+      </div>
+
     </div>
   </div>
 
@@ -69,6 +77,25 @@
     </div>
   </div>
 </div>
+
+<!-- Scrap-from-URL Modal -->
+<div id="scrapBackdrop" class="p-backdrop">
+  <div class="p-modal">
+    <h2>Scrap recept van URL</h2>
+    <div class="p-form-grid">
+      <div class="p-full">
+        <label class="small" for="scrapUrl">Recept-URL</label>
+        <input id="scrapUrl" class="input" type="url" placeholder="https://voorbeeld.nl/mijn-recept" required />
+        <p class="small">De automatische scraper komt later. Voor nu kun je de URL alvast ingeven.</p>
+      </div>
+    </div>
+    <div class="p-modal-footer">
+      <button class="btn" id="scrapCancelBtn">Annuleren</button>
+      <button class="btn primary" id="scrapSaveBtn">Scrap</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
 // helpers
@@ -159,11 +186,87 @@ if (email) {
     }
   });
 
+  // --- Dropdown for Recipe toevoegen ---
   const modal = document.getElementById('backdrop');
 
-  document.getElementById('addBtn').onclick = () => {
-    modal.classList.add('show');
-  };
+  const addBtn = document.getElementById('addBtn');
+  const addMenu = document.getElementById('addMenu');
+  const btnAddOwn = document.getElementById('btnAddOwn');
+  const btnScrapUrl = document.getElementById('btnScrapUrl');
+
+  function toggleAddMenu() {
+    addMenu.classList.toggle('hidden');
+    addBtn.setAttribute('aria-expanded', addMenu.classList.contains('hidden') ? 'false' : 'true');
+  }
+
+  addBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleAddMenu();
+  });
+
+  window.addEventListener('click', (e) => {
+    if (!e.target.closest('.p-add-menu')) {
+      addMenu.classList.add('hidden');
+      addBtn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  // “Eigen recept” uses your existing modal
+  btnAddOwn.addEventListener('click', () => {
+    addMenu.classList.add('hidden');
+    addBtn.setAttribute('aria-expanded', 'false');
+    document.getElementById('backdrop').classList.add('show');
+  });
+
+  // “Scrap een recept” opens the URL modal
+  const scrapBackdrop = document.getElementById('scrapBackdrop');
+  const scrapUrlInput = document.getElementById('scrapUrl');
+  const scrapCancelBtn = document.getElementById('scrapCancelBtn');
+  const scrapSaveBtn = document.getElementById('scrapSaveBtn');
+
+  btnScrapUrl.addEventListener('click', () => {
+    addMenu.classList.add('hidden');
+    addBtn.setAttribute('aria-expanded', 'false');
+    scrapBackdrop.classList.add('show');
+    setTimeout(() => scrapUrlInput?.focus(), 0);
+  });
+
+  // Close scrap modal on backdrop click
+  scrapBackdrop.addEventListener('click', (e) => {
+    if (e.target === scrapBackdrop) {
+      scrapBackdrop.classList.remove('show');
+    }
+  });
+
+  scrapCancelBtn.addEventListener('click', () => {
+    scrapBackdrop.classList.remove('show');
+  });
+
+  // For later scraping: we enqueue the URL locally so you can process it later.
+  // If you prefer “do nothing”, just remove the body of submitScrapUrl().
+  function enqueueScrapUrl(url) {
+    const k = "rp_scrap_queue_" + email;
+    let queue = [];
+    try { queue = JSON.parse(localStorage.getItem(k)) || []; } catch (_) {}
+    queue.unshift({ url, addedAt: new Date().toISOString() });
+    localStorage.setItem(k, JSON.stringify(queue));
+  }
+
+  function submitScrapUrl() {
+    const url = (scrapUrlInput.value || "").trim();
+    if (!url) {
+      scrapUrlInput.focus();
+      return;
+    }
+    // Store for later processing (no scraping now)
+    enqueueScrapUrl(url);
+
+    // Reset + close
+    scrapUrlInput.value = "";
+    scrapBackdrop.classList.remove('show');
+  }
+
+scrapSaveBtn.addEventListener('click', submitScrapUrl);
 
   document.getElementById('cancelBtn').onclick = () => {
     modal.classList.remove('show');
