@@ -141,3 +141,28 @@ textarea.input {
 
 
 body.no-scroll { overflow: hidden; }  /* so page behind stops scrolling when modal opens */
+
+
+/* Card action row: keep buttons visible always */
+.p-actions-row {
+  display: flex;
+  gap: .5rem;
+  margin-top: .5rem;
+  flex-wrap: wrap;
+}
+
+/* Detail modal content structure */
+.p-detail-header { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: .75rem; }
+.p-detail-media img { width: 100%; height: auto; border-radius: 12px; display: block; }
+.p-detail-meta { color: var(--p-muted); margin: .25rem 0 .5rem 0; }
+.p-detail-sections { display: grid; grid-template-columns: 1fr; gap: .75rem; }
+.p-detail-section h3 { margin: .25rem 0 .25rem 0; font-size: 1rem; }
+.p-detail-list { margin: .25rem 0 0 1rem; }
+.p-detail-notes { white-space: pre-wrap; margin-top: .25rem; }
+
+/* Make detail modal internally scrollable (title/footer fixed) */
+#detailModal { display: flex; flex-direction: column; max-height: 90vh; }
+#detailModal .p-detail-content { flex: 1 1 auto; min-height: 0; overflow: auto; padding-right: .25rem; }
+
+/* Ensure modals float above sticky header */
+.p-backdrop { z-index: 100; }

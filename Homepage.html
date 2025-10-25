@@ -129,6 +129,14 @@
   </div>
 </div>
 
+<!-- Recipe Detail Modal -->
+<div id="detailBackdrop" class="p-backdrop">
+  <div class="p-modal" id="detailModal">
+    <!-- content injected by openRecipeDetail(...) -->
+  </div>
+</div>
+
+
 
 <script>
 // helpers
@@ -162,54 +170,46 @@ function save(email, arr) {
 }
 
 function pinHTML(r, i) {
-  // If we have a non-empty image URL, render an <img>. Otherwise, render nothing.
-  // onerror="this.remove()" prevents broken image icons by removing the <img> node if it fails to load.
+  // Render image if present; remove broken images automatically
   const img = (r.image && r.image.trim().length)
     ? `<img src="${r.image}" alt="${r.title}" onerror="this.remove()">`
     : "";
 
-  // Count ingredients/steps safely (older recipes may not have these arrays).
+  // Counts for ingredients/steps (backward-safe)
   const ingCount = Array.isArray(r.ingredients) ? r.ingredients.length : 0;
   const stepCount = Array.isArray(r.steps) ? r.steps.length : 0;
-
-  // Build an optional "extra" string like "3 ing • 5 stappen".
-  // If either count is zero, we omit that part. If both are zero, extra becomes "".
   const extra = [ingCount ? `${ingCount} ing` : null, stepCount ? `${stepCount} stappen` : null]
     .filter(Boolean)
     .join(" • ");
 
-  // Return the recipe "pin" as HTML. This is what gets inserted into the masonry grid.
+  // NOTE:
+  // - No <a> around the media, so clicking the card won't navigate.
+  // - We rely on data-id to open the detail modal for the correct item.
+  // - "Open bron" button appears only if a source URL exists.
+  // - "Bewaar" is ALWAYS visible.
   return `
-    <article class="p-pin">
-      <!-- Clickable media area; opens source in a new tab if provided, this is a comment-->
-      <a class="p-media" href="${r.source || '#'}" ${r.source ? 'target="_blank" rel="noopener noreferrer"' : ''}>
+    <article class="p-pin" data-id="${r.id}">
+      <div class="p-media">
         ${img}
-        <!-- Action buttons (visual only for now) -->
-        <div class="p-floating">
-          <button class="p-icon-btn" title="Open bron">↗</button>
-          <button class="p-icon-btn p-save" title="Bewaar">Bewaar</button>
-        </div>
-      </a>
+      </div>
 
       <div class="p-body">
-        <!-- Recipe title -->
         <p class="p-title">${r.title}</p>
-
-        <!-- Meta line:
-            - Category if present (adds "Categorie • " prefix)
-            - Time (or "-")
-            - Servings (or "-") followed by " p"
-            - Extra counts (ingredients/steps) only if available. this is a comment-->
         <p class="p-meta">
           ${r.tag ? r.tag + " • " : ""}${r.time || "-"} • ${r.servings || "-"} p${extra ? " • " + extra : ""}
         </p>
 
-        <!-- Remove button uses the index 'i' to delete the correct recipe -->
-        <button class="btn small" onclick="removeRecipe(${i})">Verwijderen</button>
+        <div class="p-actions-row">
+          ${r.source ? `<button class="btn small js-open-source" title="Open bron" data-url="${r.source}">↗ Open bron</button>` : ""}
+          <button class="btn small p-save">Bewaar</button>
+          <button class="btn small" onclick="removeRecipeById('${r.id}')">Verwijderen</button>
+
+        </div>
       </div>
     </article>
   `;
 }
+
 
 
 function render(list) {
@@ -232,6 +232,28 @@ const email = ensureAuth();
 let list = email ? load(email) : [];
 
 if (email) {
+
+  // --- ID helper: stable unique id for each recipe ---
+  function generateId() {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID(); // modern browsers
+    }
+    // Fallback: timestamp + random base36 (short)
+    return "r_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+  }
+
+  // --- One-time migration: give ids to older recipes that don't have one ---
+  let changed = false;
+  for (const item of list) {
+    if (!item.id) {
+      item.id = generateId();
+      changed = true;
+    }
+  }
+  if (changed) save(email, list);
+
+
+
   document.getElementById('hello').textContent = email;
   render(list);
 
@@ -362,42 +384,48 @@ scrapSaveBtn.addEventListener('click', submitScrapUrl);
         .map(s => s.replace(/^\d+[\).\s-]?\s*/, '')); // strip leading "1.", "2)", "3 -", etc.
     }
 
+// Save new recipe (Eigen recept)
 document.getElementById('saveBtn').onclick = () => {
-  // 0) Collect inputs (incl. new fields)
+  // --- Collect inputs (incl. new fields) ---
   const r = {
+    // Use helper for a stable id
+    id: generateId(),
+
     title: title.value.trim(),
     time: time.value,
     servings: servings.valueAsNumber || 2,
     source: source.value,
     image: image.value,
-    tag: tag.value, // from <select>, "" means "Geen categorie"
+
+    // tag comes from <select>; "" = "Geen categorie"
+    tag: tag.value,
+
+    // Parse extra fields into arrays / string
     ingredients: parseBulletedList(ingredients.value),
     steps: parseNumberedList(steps.value),
     notes: (notes.value || "").trim()
   };
 
-  if (!r.title) { 
-    title.focus(); 
-    return; 
-  }
+  // Basic validation
+  if (!r.title) { title.focus(); return; }
 
-  // 1) Persist + re-render
+  // --- Persist + re-render ---
   list.unshift(r);
   save(email, list);
   render(list);
 
-  // 2) Close the modal (this line probably already existed in your code)
+  // --- Close modal ---
   modal.classList.remove('show');
 
-  // 3) NEW: unlock page scroll (this is the extra line you add)
+  // If you lock body scroll on open, unlock here
   document.body.classList.remove('no-scroll');
 
-  // 4) Reset fields
+  // --- Clear inputs ---
   title.value = "";
   time.value = "";
   source.value = "";
   image.value = "";
-  tag.value = "";          // resets to "Geen categorie" in your <select>
+  tag.value = "";          // resets to "Geen categorie"
   servings.value = 2;
   ingredients.value = "";
   steps.value = "";
@@ -405,17 +433,137 @@ document.getElementById('saveBtn').onclick = () => {
 };
 
 
+
   document.getElementById('logoutBtn').onclick = () => {
     localStorage.removeItem("rp_current_user");
     location.href = "Aanmelden.html";
   };
+
+
+  const gridEl = document.getElementById('grid');
+  const detailBackdrop = document.getElementById('detailBackdrop');
+  const detailModal = document.getElementById('detailModal');
+
+  // Delegate clicks inside the grid
+  gridEl.addEventListener('click', (e) => {
+    // 1) "Open bron" button: navigate only if present; don't bubble to card
+    const sourceBtn = e.target.closest('.js-open-source');
+    if (sourceBtn) {
+      const url = sourceBtn.getAttribute('data-url');
+      if (url) window.open(url, '_blank', 'noopener');
+      e.stopPropagation();
+      return;
+    }
+
+    // 2) Click on a card anywhere else: open detail modal
+    const card = e.target.closest('.p-pin');
+    if (!card) return;
+
+    const id = card.getAttribute('data-id');
+    const recipe = list.find(r => r.id === id);
+    if (recipe) openRecipeDetail(recipe);
+  });
+
+  // Render + open the detail modal for a recipe object
+  function openRecipeDetail(r) {
+    const hasImg = r.image && r.image.trim().length;
+    const ing = Array.isArray(r.ingredients) ? r.ingredients : [];
+    const steps = Array.isArray(r.steps) ? r.steps : [];
+    const tagPart = r.tag ? r.tag + " • " : "";
+    const meta = `${tagPart}${r.time || "-"} • ${r.servings || "-"} p`;
+
+    const ingredientsHTML =
+      ing.length
+        ? `<ul class="p-detail-list">${ing.map(x => `<li>${escapeHTML(x)}</li>`).join("")}</ul>`
+        : `<p class="small">Geen ingrediënten toegevoegd.</p>`;
+
+    const stepsHTML =
+      steps.length
+        ? `<ol class="p-detail-list">${steps.map(x => `<li>${escapeHTML(x)}</li>`).join("")}</ol>`
+        : `<p class="small">Geen stappen toegevoegd.</p>`;
+
+    const notesHTML =
+      (r.notes && r.notes.trim().length)
+        ? `<div class="p-detail-notes">${escapeHTML(r.notes)}</div>`
+        : `<p class="small">Geen notities.</p>`;
+
+    detailModal.innerHTML = `
+      <h2>${escapeHTML(r.title)}</h2>
+      <div class="p-detail-content">
+        ${hasImg ? `<div class="p-detail-media"><img src="${r.image}" alt="${escapeAttr(r.title)}" onerror="this.remove()"></div>` : ""}
+        <div class="p-detail-meta">${meta}</div>
+
+        <div class="p-detail-sections">
+          <section class="p-detail-section">
+            <h3>Ingrediënten</h3>
+            ${ingredientsHTML}
+          </section>
+
+          <section class="p-detail-section">
+            <h3>Stappen</h3>
+            ${stepsHTML}
+          </section>
+
+          <section class="p-detail-section">
+            <h3>Notities</h3>
+            ${notesHTML}
+          </section>
+        </div>
+      </div>
+      <div class="p-modal-footer">
+        <button class="btn" id="detailCloseBtn">Sluiten</button>
+        ${r.source ? `<button class="btn primary" id="detailOpenSourceBtn">↗ Open bron</button>` : ""}
+      </div>
+    `;
+
+    // Wire footer buttons
+    detailModal.querySelector('#detailCloseBtn')?.addEventListener('click', closeRecipeDetail);
+    detailModal.querySelector('#detailOpenSourceBtn')?.addEventListener('click', () => {
+      if (r.source) window.open(r.source, '_blank', 'noopener');
+    });
+
+    detailBackdrop.classList.add('show');
+    document.body.classList.add('no-scroll'); // optional: lock background scroll
+  }
+
+  // Close detail modal (backdrop click + ESC)
+  detailBackdrop.addEventListener('click', (e) => {
+    if (e.target === detailBackdrop) closeRecipeDetail();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && detailBackdrop.classList.contains('show')) {
+      closeRecipeDetail();
+    }
+  });
+
+  function closeRecipeDetail() {
+    detailBackdrop.classList.remove('show');
+    document.body.classList.remove('no-scroll'); // optional: unlock
+  }
+
+  // Minimal escaping helpers (since we use innerHTML)
+  function escapeHTML(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function escapeAttr(s) {
+    return String(s).replace(/"/g, '&quot;');
+  }
+
+
+
 }
 
-function removeRecipe(i) {
-  list.splice(i, 1);
+
+
+// Delete by stable recipe id (works even after filtering/reordering)
+function removeRecipeById(id) {
+  const idx = list.findIndex(r => r.id === id);
+  if (idx === -1) return;     // nothing to delete
+  list.splice(idx, 1);
   save(email, list);
   render(list);
 }
+
 </script>
 </body>
 </html>
